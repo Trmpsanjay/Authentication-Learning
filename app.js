@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const md5 = require("md5");
 
 const app = express();
 
@@ -26,7 +26,6 @@ const userSchema =new mongoose.Schema({
 
 //encryption create it before mongoose model
 
-userSchema.plugin(encrypt, { secret: process.env.SECRET , encryptedFields: ['password'] });
 
 const User = mongoose.model("User",userSchema);
 
@@ -57,16 +56,22 @@ app.get("/submit",function(req,res){
 app.post("/register",function(req,res){
   const newUser = new User({
     email :req.body.username,
-    password :req.body.password
+    password :md5(req.body.password)
   });
-  newUser.save(function(err){
-    if(err){
-      console.log(err);
-    }else{
-      console.log(("succesfully created new user"));
-      res.render("secrets");
-    }
-  });
+  console.log(req.body.username);
+  if(req.body.username ==="" || req.body.password===""){
+    res.send("enter both fields")
+    res.redirect("/register");
+  }else{
+    newUser.save(function(err){
+      if(err){
+        console.log(err);
+      }else{
+        console.log(("succesfully created new user"));
+        res.render("secrets");
+      }
+    });
+  }
 
 });
 
@@ -78,7 +83,7 @@ app.post("/login",function(req,res){
         if(foundUser.password==null){
           res.send("User not registered kindly register");
         }
-        else if(foundUser.password==req.body.password){
+        else if(foundUser.password==md5(req.body.password)){
           console.log(foundUser.password);
           res.render("secrets");
         }
