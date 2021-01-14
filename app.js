@@ -3,8 +3,8 @@ require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const md5 = require("md5");
-
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 const app = express();
 
 console.log(process.env.API_KEY);
@@ -54,41 +54,50 @@ app.get("/submit",function(req,res){
 // handling post request
 
 app.post("/register",function(req,res){
-  const newUser = new User({
-    email :req.body.username,
-    password :md5(req.body.password)
-  });
-  console.log(req.body.username);
-  if(req.body.username ==="" || req.body.password===""){
-    res.send("enter both fields")
-    res.redirect("/register");
-  }else{
-    newUser.save(function(err){
-      if(err){
-        console.log(err);
-      }else{
-        console.log(("succesfully created new user"));
-        res.render("secrets");
-      }
+
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    const newUser = new User({
+      email :req.body.username,
+      password :hash
     });
-  }
+    console.log(req.body.username);
+    if(req.body.username ==="" || req.body.password===""){
+      res.send("enter both fields")
+      res.redirect("/register");
+    }else{
+      newUser.save(function(err){
+        if(err){
+          console.log(err);
+        }else{
+          console.log(("succesfully created new user"));
+          res.render("secrets");
+        }
+      });
+    }
+  });
+
 
 });
 
 app.post("/login",function(req,res){
+  const username = req.body.username;
+  const password = req.body.password;
   User.findOne(
-    {email : req.body.username},
+    {email : username},
     function(err,foundUser){
       try{
-        if(foundUser.password==null){
-          res.send("User not registered kindly register");
-        }
-        else if(foundUser.password==md5(req.body.password)){
-          console.log(foundUser.password);
-          res.render("secrets");
+        if(err){
+          console.log(err);
         }
         else{
-          res.send("Invalid Credadential");
+          if(foundUser){
+            bcrypt.compare(password, foundUser.password, function(err, result) {
+              if(result===true){
+                res.render("secrets");
+              }
+            });
+          }
+
         }
       }
       catch(err){
